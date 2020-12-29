@@ -1,0 +1,72 @@
+---
+# Autopilot Configuration for MSSQL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: autopilot-config
+  namespace: kube-system
+data:
+  config.yaml: |-
+    providers:
+       - name: default
+         type: prometheus
+         params: url=http://prometheus:9090
+    min_poll_interval: 2
+---
+apiVersion: autopilot.libopenstorage.org/v1alpha1
+kind: AutopilotRule
+metadata:
+  name: pool-expand
+spec:
+  enforcement: required
+  ##### conditions are the symptoms to evaluate. All conditions are AND'ed
+  conditions:
+    expressions:
+    # pool available capacity less than 50%
+    - key: "100 * ( px_pool_stats_available_bytes/ px_pool_stats_total_bytes)"
+      operator: Lt
+      values:
+        - "60"
+    # pool total capacity should not exceed 2TB
+    - key: "px_pool_stats_total_bytes/(1024*1024*1024)"
+      operator: Lt
+      values:
+       - "1000"
+  ##### action to perform when condition is true
+  actions:
+    - name: "openstorage.io.action.storagepool/expand"
+      params:
+        # resize pool by scalepercentage of current size
+        scalepercentage: "50"
+        # when scaling, add disks to the pool
+        scaletype: "add-disk"
+---
+apiVersion: autopilot.libopenstorage.org/v1alpha1
+kind: AutopilotRule
+metadata:
+ name: mssql-vol-resize
+spec:
+  ##### selector filters the objects affected by this rule given labels
+  selector:
+    matchLabels:
+      app: mssql
+  ##### namespaceSelector selects the namespaces of the objects affected by this rule
+  namespaceSelector:
+    matchLabels:
+      type: default
+  ##### conditions are the symptoms to evaluate. All conditions are AND'ed
+  conditions:
+    # volume usage should be less than 50%
+    expressions:
+    - key: "100 * (px_volume_usage_bytes / px_volume_capacity_bytes)"
+      operator: Gt
+      values:
+        - "75"
+  ##### action to perform when condition is true
+  actions:
+  - name: openstorage.io.action.volume/resize
+    params:
+      # resize volume by scalepercentage of current size
+      scalepercentage: "50"
+      # volume capacity should not exceed 400GiB
+      maxsize: "400Gi"
