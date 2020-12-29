@@ -1,0 +1,90 @@
+---
+# PX Storage Classes
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: px-mssql-db
+provisioner: kubernetes.io/portworx-volume
+parameters:
+  repl: "1"
+  io_profile: "db"
+  priority_io: "high"
+allowVolumeExpansion: true
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: px-mssql-logs
+provisioner: kubernetes.io/portworx-volume
+parameters:
+  repl: "1"
+  io_profile: "db"
+  priority_io: "high"
+allowVolumeExpansion: true
+---
+apiVersion: extensions/v1beta1
+kind: ReplicaSet
+metadata:
+  name: mssql
+  labels:
+    app: mssql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mssql
+  template:
+    metadata:
+      labels:
+        app: mssql
+    spec:
+      schedulerName: stork
+      containers:
+      - name: mssql
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        resources:
+          requests:
+            cpu: 2
+            memory: 4Gi
+        env:
+          - name: ACCEPT_EULA
+            value: "Y"
+          - name: SA_PASSWORD
+            value: "P0rtw0rx!"
+          - name: MSSQL_DATA_DIR
+            value: /var/opt/mssql/data
+          - name: MSSQL_LOG_DIR
+            value: /var/opt/mssql/logs
+        ports:
+        - containerPort: 1433
+        volumeMounts:
+        - name: mssql-data
+          mountPath: /var/opt/mssql/data
+        - name: mssql-logs
+          mountPath: /var/opt/mssql/logs
+      volumes:
+      - name: mssql-data
+        persistentVolumeClaim:
+          claimName: px-mssql-sc
+      - name: mssql-logs
+        persistentVolumeClaim:
+          claimName: px-mssql-logs-sc
+  volumeClaimTemplates:
+  - metadata:
+      name: mssql-data
+    spec:
+      storageClassName: px-mssql-db
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+  - metadata:
+      name: mssql-logs
+    spec:
+      storageClassName: px-mssql-logs
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi
