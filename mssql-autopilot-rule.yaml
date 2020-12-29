@@ -1,18 +1,5 @@
 ---
 # Autopilot Configuration for MSSQL
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: autopilot-config
-  namespace: kube-system
-data:
-  config.yaml: |-
-    providers:
-       - name: default
-         type: prometheus
-         params: url=http://prometheus:9090
-    min_poll_interval: 2
----
 apiVersion: autopilot.libopenstorage.org/v1alpha1
 kind: AutopilotRule
 metadata:
