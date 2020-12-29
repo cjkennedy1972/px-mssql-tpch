@@ -22,6 +22,7 @@ parameters:
   priority_io: "high"
 allowVolumeExpansion: true
 ---
+# Loadbalancer Service
 apiVersion: v1
 kind: Service
 metadata:
@@ -35,6 +36,7 @@ spec:
     port:  1433
     targetPort: 1433
 ---
+# MSSQL StatefulSet with PX Volumes
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
