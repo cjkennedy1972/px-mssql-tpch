@@ -11,6 +11,55 @@ parameters:
   priority_io: "high"
 allowVolumeExpansion: true
 ---
+# Persistent Volume Claims
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mssql-data
+spec:
+  storageClassName: px-mssql-db
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mssql-userdb
+spec:
+  storageClassName: px-mssql-db
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mssql-log
+spec:
+  storageClassName: px-mssql-db
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mssql-temp
+spec:
+  storageClassName: px-mssql-db
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
 # Loadbalancer Service
 apiVersion: v1
 kind: Service
@@ -51,7 +100,7 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mssql
+  name: px-mssql
 spec:
   replicas: 1
   selector:
@@ -62,10 +111,8 @@ spec:
       labels:
         app: mssql
     spec:
-      schedulerName: stork
       securityContext:
-        runAsUser: 0
-        runAsGroup: 0
+        fsGroup: 10001
       containers:
       - name: mssql
         command:
@@ -73,7 +120,7 @@ spec:
           - -c
           - cp /var/opt/config/mssql.conf /var/opt/mssql/mssql.conf && /opt/mssql/bin/sqlservr
         image: mcr.microsoft.com/mssql/server:2019-latest
-        imagePullPolicy: ifNotPresent
+        imagePullPolicy: IfNotPresent
         resources:
           requests:
             cpu: 2
@@ -116,41 +163,3 @@ spec:
       - name: mssql-config-volume
         configMap:
           name: mssql-config
-  volumeClaimTemplates:
-  - metadata:
-      name: mssql-data
-    spec:
-      storageClassName: px-mssql-db
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 5Gi
-  - metadata:
-      name: mssql-userdb
-    spec:
-      storageClassName: px-mssql-db
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 50Gi
-  - metadata:
-      name: mssql-log
-    spec:
-      storageClassName: px-mssql-db
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 10Gi
-  - metadata:
-      name: mssql-temp
-    spec:
-      storageClassName: px-mssql-db
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 10Gi
----
