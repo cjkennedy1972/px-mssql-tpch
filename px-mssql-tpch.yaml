@@ -11,17 +11,6 @@ parameters:
   priority_io: "high"
 allowVolumeExpansion: true
 ---
-kind: StorageClass
-apiVersion: storage.k8s.io/v1beta1
-metadata:
-  name: px-mssql-logs
-provisioner: kubernetes.io/portworx-volume
-parameters:
-  repl: "1"
-  io_profile: "random"
-  priority_io: "high"
-allowVolumeExpansion: true
----
 # Loadbalancer Service
 apiVersion: v1
 kind: Service
@@ -36,13 +25,34 @@ spec:
     port:  1433
     targetPort: 1433
 ---
+# MSQL Config_Map
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: mssql-config
+data:
+  mssql.conf: |
+    [EULA]
+    accepteula = Y
+    accepteulaml = Y
+    [coredump]
+    captureminiandfull = true
+    coredumptype = full
+    [hadr]
+    hadrenabled = 1
+    [language]
+    lcid = 1033
+    [filelocation]
+    defaultdatadir = /var/opt/mssql/userdata
+    defaultlogdir = /var/opt/mssql/userlog
+
+---
 # MSSQL StatefulSet with PX Volumes
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: mssql
 spec:
-  serviceName: mssql-tpc
   replicas: 1
   selector:
     matchLabels:
@@ -58,7 +68,12 @@ spec:
         runAsGroup: 0
       containers:
       - name: mssql
+        command:
+          - /bin/bash
+          - -c
+          - cp /var/opt/config/mssql.conf /var/opt/mssql/mssql.conf && /opt/mssql/bin/sqlservr
         image: mcr.microsoft.com/mssql/server:2019-latest
+        imagePullPolicy: ifNotPresent
         resources:
           requests:
             cpu: 2
@@ -68,24 +83,39 @@ spec:
             value: "Y"
           - name: SA_PASSWORD
             value: "P0rtw0rx!"
-          - name: MSSQL_DATA_DIR
-            value: /var/opt/mssql/data
-          - name: MSSQL_LOG_DIR
-            value: /var/opt/mssql/logs
+          - name: MSSQL_AGENT_ENABLED
+            value: "true"
+          - name: MSSQL_PID
+            value: "Developer"
         ports:
         - containerPort: 1433
         volumeMounts:
-        - name: mssql-data
-          mountPath: /var/opt/mssql/data
-        - name: mssql-logs
-          mountPath: /var/opt/mssql/logs
+        - name: mssqluserdb
+          mountPath: /var/opt/mssql/userdata
+        - name: mssqllog
+          mountPath: /var/opt/mssql/userlogs
+        - name: mssqldb
+          mountPath: /var/opt/mssql
+        - name: mssqltemp
+          mountPath: /var/opt/mssql/tempdb
+        - name: mssql-config-volume
+          mountPath: /var/opt/config
       volumes:
-      - name: mssql-data
+      - name: mssqldb
         persistentVolumeClaim:
-          claimName: px-mssql-sc
-      - name: mssql-logs
+          claimName: mssql-data
+      - name: mssqluserdb
         persistentVolumeClaim:
-          claimName: px-mssql-logs-sc
+          claimName: mssql-userdb
+      - name: mssqllog
+        persistentVolumeClaim:
+          claimName: mssql-log
+      - name: mssqltemp
+        persistentVolumeClaim:
+          claimName: mssql-temp
+      - name: mssql-config-volume
+        configMap:
+          name: mssql-config
   volumeClaimTemplates:
   - metadata:
       name: mssql-data
@@ -95,13 +125,32 @@ spec:
       - ReadWriteOnce
       resources:
         requests:
+          storage: 5Gi
+  - metadata:
+      name: mssql-userdb
+    spec:
+      storageClassName: px-mssql-db
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
           storage: 50Gi
   - metadata:
-      name: mssql-logs
+      name: mssql-log
     spec:
-      storageClassName: px-mssql-logs
+      storageClassName: px-mssql-db
       accessModes:
       - ReadWriteOnce
       resources:
         requests:
           storage: 10Gi
+  - metadata:
+      name: mssql-temp
+    spec:
+      storageClassName: px-mssql-db
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+---
