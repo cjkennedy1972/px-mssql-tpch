@@ -95,7 +95,7 @@ data:
     defaultlogdir = /var/opt/mssql/userlog
 
 ---
-# MSSQL StatefulSet with PX Volumes
+# MSSQL Deployment with PX Volumes
 apiVersion: apps/v1
 kind: Deployment
 metadata:
