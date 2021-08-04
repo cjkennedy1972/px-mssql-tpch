@@ -6,8 +6,9 @@ metadata:
   name: px-mssql-db
 provisioner: kubernetes.io/portworx-volume
 parameters:
-  repl: "1"
+  repl: "2"
   priority_io: "high"
+  io_profile: "db"
 allowVolumeExpansion: true
 ---
 # Persistent Volume Claims
@@ -21,7 +22,7 @@ spec:
   - ReadWriteOnce
   resources:
     requests:
-      storage: 5Gi
+      storage: 20Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
