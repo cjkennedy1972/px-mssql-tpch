@@ -16,6 +16,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mssql-data
+  labels:
+    app: mssql
 spec:
   storageClassName: px-mssql-db
   accessModes:
@@ -28,6 +30,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mssql-userdb
+  labels:
+    app: mssql
 spec:
   storageClassName: px-mssql-db
   accessModes:
@@ -40,6 +44,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mssql-log
+  labels:
+    app: mssql
 spec:
   storageClassName: px-mssql-db
   accessModes:
@@ -52,6 +58,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mssql-temp
+  labels:
+    app: mssql
 spec:
   storageClassName: px-mssql-db
   accessModes:
@@ -65,6 +73,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name:  px-mssql
+  labels:
+    app: mssql
 spec:
   selector:
     app:  mssql
@@ -79,6 +89,8 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: mssql-config
+  labels:
+    app: mssql
 data:
   mssql.conf: |
     [EULA]
@@ -101,6 +113,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: px-mssql
+  labels:
+    app: mssql
 spec:
   replicas: 1
   selector:
